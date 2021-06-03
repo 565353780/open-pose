@@ -1,0 +1,303 @@
+========Usages========
+
+E:\chLi\openpose-master\examples\openpose\openpose.cpp
+33	true						true : use multi videos ; false : other mode
+35	path of cameraParameters	Path to your cameraParameters
+36	FLAGS_3d_views				num of videos you want to input
+37	camera resolution			the frame size you want to be
+64	FLAGS_write_json			Path to your json to save
+167	true						true : only compute camera matrix ; false : openpose on
+
+E:\chLi\openpose-master\src\openpose\producer\spinnakerWrapper.cpp
+914-918	path of videos			Path to your multi videos
+928	myFrameShowNum				Frame to show begin with this num
+
+========CMake========
+Choose your source code path
+Set your build path
+Add Entry WITH_3D_RENDERER -> True
+Notice that if you have the Entry WITH_FLIR_CAMERA,please set it to False
+Configure
+Generate
+
+========Changes========
+
+E:\chLi\openpose-master\examples\openpose\openpose.cpp
+14-15							append
+----
+//Compute_Camera_Matrix
+#include <openpose/calibration/my_compute_camera_matrix.hpp>
+----
+
+33-46							append
+----
+//FLAGS_image_dir = "E:/chLi/openpose-master/build/x64/Release/JPEGImages";
+//FLAGS_video = "E:/chLi/openpose-master/multi_video/cap_20190302_115719_c400261.avi";
+if (true)
+{
+	FLAGS_camera_parameter_path = "E:/chLi/openpose-master/models/cameraParameters/flir/";
+	FLAGS_3d_views = 5;
+	FLAGS_camera_resolution = "409x300";
+	FLAGS_3d = true;
+	//FLAGS_number_people_max = 1;
+	FLAGS_display = 2;
+	FLAGS_flir_camera = true;
+	FLAGS_flir_camera_index = FLAGS_3d_views;
+	//FLAGS_frame_undistort = true;
+}
+----
+
+167-172							append
+----
+if (true)
+{
+	Compute_Camera_Matrix(0.05, 0.05, 45, -1, -1.5, 0);
+
+	return 1;
+}
+----
+
+E:\chLi\openpose-master\include\openpose\producer\spinnakerWrapper.hpp
+50-56							append
+----
+private:
+	std::vector<cv::VideoCapture> myVideoCaptures;
+	CameraParameterReader myCameraParameterReader;
+	int myVideoFramesNum;
+	int myFrameShowNum = 0;
+	int myWidth = 0;
+	int myHeight = 0;
+----
+
+E:\chLi\openpose-master\src\openpose\producer\spinnakerWrapper.cpp
+5								append
+----
+#include <opencv2/highgui/highgui.hpp> // cv::VideoCapture
+----
+
+913								//
+----
+//error(USE_FLIR_CAMERA_ERROR, __LINE__, __FUNCTION__, __FILE__);
+----
+
+914-930							append
+----
+myVideoCaptures.push_back(cv::VideoCapture("E:/chLi/openpose-master/multi_video/cap_20190302_115719_c400244.avi"));
+myVideoCaptures.push_back(cv::VideoCapture("E:/chLi/openpose-master/multi_video/cap_20190302_115719_c400246.avi"));
+myVideoCaptures.push_back(cv::VideoCapture("E:/chLi/openpose-master/multi_video/cap_20190302_115719_c400247.avi"));
+myVideoCaptures.push_back(cv::VideoCapture("E:/chLi/openpose-master/multi_video/cap_20190302_115719_c400260.avi"));
+myVideoCaptures.push_back(cv::VideoCapture("E:/chLi/openpose-master/multi_video/cap_20190302_115719_c400261.avi"));
+myCameraParameterReader.readParameters(cameraParameterPath);
+myVideoFramesNum = myVideoCaptures[0].get(cv::CAP_PROP_FRAME_COUNT);
+for (int i = 1; i < myVideoCaptures.size(); ++i)
+{
+	if (myVideoCaptures[i].get(cv::CAP_PROP_FRAME_COUNT) < myVideoFramesNum)
+	{
+		myVideoFramesNum = myVideoCaptures[i].get(cv::CAP_PROP_FRAME_COUNT);
+	}
+}
+myFrameShowNum = 35;
+myWidth = resolution.x;
+myHeight = resolution.y;
+----
+
+970-993							append
+----
+printf("GOGOGO!!!----spinnaker\n");
+
+std::vector<cv::Mat> mycvMats;
+
+if (myFrameShowNum < myVideoFramesNum)
+{
+	for (int i = 0; i < myVideoCaptures.size(); ++i)
+	{
+		cv::Mat myframe;
+
+		myVideoCaptures[i].set(cv::CAP_PROP_POS_FRAMES, myFrameShowNum);
+
+		myVideoCaptures[i] >> myframe;
+		if (myWidth > 0 && myHeight > 0)
+		{
+			resize(myframe, myframe, cv::Size(myWidth, myHeight));
+		}
+		mycvMats.push_back(myframe);
+	}
+
+	++myFrameShowNum;
+
+	return mycvMats;
+}
+----
+
+1013							append
+----
+return myCameraParameterReader.getCameraMatrices();
+----
+
+1031							append
+----
+return myCameraParameterReader.getCameraExtrinsics();
+----
+
+1049							append
+----
+return myCameraParameterReader.getCameraIntrinsics();
+----
+
+1067							append
+----
+return Point<int>{myWidth, myHeight};
+----
+
+1085							append
+----
+return true;
+----
+
+1191							append
+----
+myVideoCaptures.clear();
+----
+
+
+E:\chLi\openpose-master\src\openpose\wrapper\wrapperAuxiliary.cpp
+134-135							//
+----
+//error("Set `--number_people_max 1` when using `--3d`. The 3-D reconstruction demo assumes there is"
+//      " at most 1 person on each image.", __LINE__, __FUNCTION__, __FILE__);
+----
+
+E:\chLi\openpose-master\src\openpose\gui\gui3D.cpp
+20-21							//
+----
+//const auto WINDOW_WIDTH = 1280;
+//const auto WINDOW_HEIGHT = 720;
+----
+
+22-23							append
+----
+const auto WINDOW_WIDTH = 409;
+const auto WINDOW_HEIGHT = 300;
+----
+
+E:\chLi\openpose-master\src\openpose\3d\poseTriangulation.cpp
+442-443							//
+----
+//&& (reprojectionErrors[index] < 5 * reprojectionErrorTotal
+	//&& reprojectionErrors[index] < reprojectionMaxAcceptable)
+----
+
+E:\chLi\openpose-master\include\openpose\3d\wPoseTriangulation.hpp
+81-104							//
+----
+/*
+for (auto& tDatumPtr : *tDatums)
+{
+	poseKeypointVector.emplace_back(tDatumPtr->poseKeypoints);
+	faceKeypointVector.emplace_back(tDatumPtr->faceKeypoints);
+	leftHandKeypointVector.emplace_back(tDatumPtr->handKeypoints[0]);
+	rightHandKeypointVector.emplace_back(tDatumPtr->handKeypoints[1]);
+	cameraMatrices.emplace_back(tDatumPtr->cameraMatrix);
+	imageSizes.emplace_back(
+		Point<int>{tDatumPtr->cvInputData.cols, tDatumPtr->cvInputData.rows});
+}
+// Pose 3-D reconstruction
+auto poseKeypoints3Ds = spPoseTriangulation->reconstructArray(
+	{poseKeypointVector, faceKeypointVector, leftHandKeypointVector, rightHandKeypointVector},
+	cameraMatrices, imageSizes);
+// Assign to all tDatums
+for (auto& tDatumPtr : *tDatums)
+{
+	tDatumPtr->poseKeypoints3D = poseKeypoints3Ds[0];
+	tDatumPtr->faceKeypoints3D = poseKeypoints3Ds[1];
+	tDatumPtr->handKeypoints3D[0] = poseKeypoints3Ds[2];
+	tDatumPtr->handKeypoints3D[1] = poseKeypoints3Ds[3];
+}
+*/
+----
+
+106-180							append
+----
+int person_max = 100000;
+int parts = (*tDatums)[0]->poseKeypoints.getSize(1);
+int axis = (*tDatums)[0]->poseKeypoints.getSize(2);
+int person_num = person_max;
+for (auto& tDatumPtr : *tDatums)
+{
+	if (tDatumPtr->poseKeypoints.getSize(0) < person_num)
+	{
+		person_num = tDatumPtr->poseKeypoints.getSize(0);
+	}
+}
+if (person_num == person_max || person_num == 0)
+{
+	return;
+}
+
+std::vector<std::vector<Array<float>>> poseKeypointVectors;
+for (int i = 0; i < person_num; ++i)
+{
+	for (auto& tDatumPtr : *tDatums)
+	{
+		Array<float> keypoints_copy({1, parts, axis});
+		for (int j = 0; j < parts; ++j)
+		{
+			for (int k = 0; k < axis; ++k)
+			{
+				keypoints_copy[{0, j, k}] = tDatumPtr->poseKeypoints[{i, j, k}];
+			}
+		}
+			poseKeypointVector.emplace_back(keypoints_copy);
+	}
+	poseKeypointVectors.emplace_back(poseKeypointVector);
+	poseKeypointVector.clear();
+}
+for (auto& tDatumPtr : *tDatums)
+{
+	faceKeypointVector.emplace_back(tDatumPtr->faceKeypoints);
+	leftHandKeypointVector.emplace_back(tDatumPtr->handKeypoints[0]);
+	rightHandKeypointVector.emplace_back(tDatumPtr->handKeypoints[1]);
+	cameraMatrices.emplace_back(tDatumPtr->cameraMatrix);
+	imageSizes.emplace_back(
+		Point<int>{tDatumPtr->cvInputData.cols, tDatumPtr->cvInputData.rows});
+}
+
+std::vector<Array<float>> poseKeypoints3Dss;
+for (int i = 0; i < person_num; ++i)
+{
+	auto poseKeypoints3Ds = spPoseTriangulation->reconstructArray(
+		{ poseKeypointVectors[i], faceKeypointVector, leftHandKeypointVector, rightHandKeypointVector },
+		cameraMatrices, imageSizes);
+	poseKeypoints3Dss.emplace_back(poseKeypoints3Ds[0]);
+}
+auto poseKeypoints3Ds = spPoseTriangulation->reconstructArray(
+	{ poseKeypointVector, faceKeypointVector, leftHandKeypointVector, rightHandKeypointVector },
+	cameraMatrices, imageSizes);
+
+Array<float> poseKeypoints3DsToOne({person_num, parts, axis});
+for (int i = 0; i < person_num; ++i)
+{
+	for (int j = 0; j < parts; ++j)
+	{
+		for (int k = 0; k < axis; ++k)
+		{
+			poseKeypoints3DsToOne[{i, j, k}] = poseKeypoints3Dss[i][{0, j, k}];
+		}
+	}
+}
+for (auto& tDatumPtr : *tDatums)
+{
+	tDatumPtr->poseKeypoints3D = poseKeypoints3DsToOne;
+	tDatumPtr->faceKeypoints3D = poseKeypoints3Ds[1];
+	tDatumPtr->handKeypoints3D[0] = poseKeypoints3Ds[2];
+	tDatumPtr->handKeypoints3D[1] = poseKeypoints3Ds[3];
+}
+----
+
+E:\chLi\openpose-master\src\openpose\gui\gui3D.cpp
+115								append
+----
+for(int person=0;person<numberPeople;++person)
+----
+
+
